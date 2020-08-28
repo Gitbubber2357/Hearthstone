@@ -31,6 +31,10 @@ class BuffedCard(Card):
         self.is_shield = shield
         self.is_windfury = windfury
         self.is_taunt = taunt
+        
+    def copy(self):
+        return BuffedCard(self.name, self.rank, self.attack, self.health,
+                          self.is_poisonous, self.is_shield, self.is_windfury, self.is_taunt)
 
 
 def attack(card_A, card_B):
@@ -63,75 +67,67 @@ class Table:
     def rank_counter(self):
         return sum(card.rank for card in self.cards if card.is_live)
     
-    def copy(self):
-        health = [card.health for card in self.cards]
-        shield = [card.is_shield for card in self.cards]
-        return health, shield
+    def copy_table(self):
+        table_copy = Table(self.name)
+        for card in self.cards:
+            table_copy.cards.append(card.copy())
+        return table_copy
     
     def one_round(self, op_table):
-        copy_H_self, copy_S_self = self.copy()
-        copy_H_op, copy_S_op = op_table.copy()
+        table_copy_self = self.copy_table()
+        table_copy_op = op_table.copy_table()
         
         attacker_index_self = attacker_index_op = -1
-        initial_live_self = int(self.is_live_counter())
-        initial_live_op = int(op_table.is_live_counter())
+        initial_live_self = int(table_copy_self.is_live_counter())
+        initial_live_op = int(table_copy_op.is_live_counter())
         
-        while self.is_live_counter() != 0 and op_table.is_live_counter() != 0:
+        while table_copy_self.is_live_counter() != 0 and table_copy_op.is_live_counter() != 0:
             attacker_index_self += 1
             attacker_index_self %= initial_live_self
 
-            while not self.cards[attacker_index_self].is_live:
+            while not table_copy_self.cards[attacker_index_self].is_live:
                 attacker_index_self += 1
                 attacker_index_self %= initial_live_self
 
             random_int = np.random.randint(0,initial_live_op)
 
-            while not op_table.cards[random_int].is_live:
+            while not table_copy_op.cards[random_int].is_live:
                 random_int += 1
                 random_int %= initial_live_op
             
-            attack(self.cards[attacker_index_self], op_table.cards[random_int])
-            print("%s in %s attack %s in %s" %(self.cards[attacker_index_self].name, self.name,
-                                                    op_table.cards[random_int].name, op_table.name))
+            attack(table_copy_self.cards[attacker_index_self], table_copy_op.cards[random_int])
+            print("%s in %s attack %s in %s" %(table_copy_self.cards[attacker_index_self].name, table_copy_self.name,
+                                                    table_copy_op.cards[random_int].name, table_copy_op.name))
 
-            if self.is_live_counter() != 0 and op_table.is_live_counter() != 0:
+            if table_copy_self.is_live_counter() != 0 and table_copy_op.is_live_counter() != 0:
                 attacker_index_op += 1
                 attacker_index_op %= initial_live_op
 
-                while not op_table.cards[attacker_index_op].is_live:
+                while not table_copy_op.cards[attacker_index_op].is_live:
                     attacker_index_op += 1
                     attacker_index_op %= initial_live_op
 
                 random_int = np.random.randint(0,initial_live_self)
                 
-                while not self.cards[random_int].is_live:
+                while not table_copy_self.cards[random_int].is_live:
                     random_int += 1
                     random_int %= initial_live_self
 
-                attack(op_table.cards[attacker_index_op], self.cards[random_int])
-                print("%s in %s attack %s in %s" %(op_table.cards[attacker_index_op].name, op_table.name,
-                                                   self.cards[random_int].name, self.name))
+                attack(table_copy_op.cards[attacker_index_op], table_copy_self.cards[random_int])
+                print("%s in %s attack %s in %s" %(table_copy_op.cards[attacker_index_op].name, table_copy_op.name,
+                                                   table_copy_self.cards[random_int].name, table_copy_self.name))
                         
-        if self.is_live_counter() != 0 and op_table.is_live_counter() == 0:
-            print("%s wins this round." %(self.name))
-            return "self", self.rank_counter()
+        if table_copy_self.is_live_counter() != 0 and table_copy_op.is_live_counter() == 0:
+            print("%s wins this round." %(table_copy_self.name))
+            return table_copy_self.name, table_copy_self.rank_counter()
             
-        elif self.is_live_counter() == 0 and op_table.is_live_counter() != 0:
-            print("%s wins this round." %(op_table.name))
-            return "op", op_table.rank_counter()
+        elif table_copy_self.is_live_counter() == 0 and table_copy_op.is_live_counter() != 0:
+            print("%s wins this round." %(table_copy_op.name))
+            return table_copy_op.name, table_copy_op.rank_counter()
             
         else:
             print("It's a tie.")
             return "nobody", 0
-        
-        for i in range(len(self.cards)):
-            self.cards[i].health = copy_H_self[i]
-            self.cards[i].is_shield = copy_S_self[i]
-        
-        for i in range(len(op_table.cards)):
-            op_table.cards[i].health = copy_H_op[i]
-            op_table.cards[i].is_shield = copy_S_op[i]
-            
             
 def prob_mach(*prob_number):
     prob_number = prob_number
@@ -170,20 +166,20 @@ class Boss:
     
     def random_pick(self):
         if self.rank == 1:
-            temp = prob_mach([1,self.rank])
-            return card_rank[temp-1][np.random.randint(0,2)]
+            temp = prob_mach([1,1])
+            return card_rank[temp-1][np.random.randint(0,2)].copy()
         elif self.rank == 2:
             temp = prob_mach([1,1], [1,2])
-            return card_rank[temp-1][np.random.randint(0,2)]
+            return card_rank[temp-1][np.random.randint(0,2)].copy()
         elif self.rank == 3:
             temp = prob_mach([1,1], [2,2], [2,3])
-            return card_rank[temp-1][np.random.randint(0,2)]
+            return card_rank[temp-1][np.random.randint(0,2)].copy()
         elif self.rank == 4:
             temp = prob_mach([1,1], [2,2], [3,3], [3,4])
-            return card_rank[temp-1][np.random.randint(0,2)]
+            return card_rank[temp-1][np.random.randint(0,2)].copy()
         else:
             temp = prob_mach([1,1], [2,2], [3,3], [4,4], [4,5])
-            return card_rank[temp-1][np.random.randint(0,2)]
+            return card_rank[temp-1][np.random.randint(0,2)].copy()
     
     def show(self):
         if self.rank == 1:
@@ -209,7 +205,7 @@ class Player:
     
     def buy_card(self, card):
         if self.coin >= 3 and len(self.cards) < 5:
-            self.cards += [card]
+            self.cards += [card.copy()]
             self.coin -= 3
         
         elif self.coin < 3:
@@ -294,11 +290,11 @@ def require(parser, require_hint, exception_hint = None):
 # GAME CODE (Hearthstone)
 
 def Hearthstone():
-    name_one = input("What is your name (player_one):")
-    name_two = input("What is your name (player_two):")
+    name_one = input("What is your name(player_one):")
+    name_two = input("What is your name(player_two):")
     
-    player_one = Player(name = name_one, coin = 3, blood = 10)
-    player_two = Player(name = name_two, coin = 3, blood = 10)
+    player_one = Player(name = name_one, coin = 0, blood = 10)
+    player_two = Player(name = name_two, coin = 0, blood = 10)
     
     boss_one = Boss()
     boss_two = Boss()
@@ -306,7 +302,7 @@ def Hearthstone():
     table_one = Table(name = name_one)
     table_two = Table(name = name_two)
     
-    coin_max = 2
+    coin_max = 6
     
     def round_player(player, boss, table):
         player.coin = coin_max
@@ -318,6 +314,7 @@ def Hearthstone():
         interface_total(B = show, T = table.cards, P = player.cards)
         print("Upgrade the rank of Boss needs %d coins." %(boss.upgrade_coin))
         print("%d coins are still on your hand." %(player.coin))
+        print("%d bloods is left." %(player.blood))
         print("-----------------------")
 
         def parser_do_sth(input_str):
@@ -327,7 +324,10 @@ def Hearthstone():
             elif input_str == "P" and len(table.cards) < 5 and len(player.cards) > 0:
                 return input_str
             
-            elif input_str == "S" and len(table.cards) >= 2:
+            elif input_str == "C" and len(table.cards) >= 2:
+                return input_str
+            
+            elif input_str == "S" and len(table.cards) >= 1:
                 return input_str
             
             elif input_str == "U" and player.coin >= boss.upgrade_coin:
@@ -336,13 +336,22 @@ def Hearthstone():
             elif input_str == "R" and player.coin >= 1:
                 return input_str
 
-            elif input_str == "C":
+            elif input_str == "O":
                 return input_str
 
             else:
                 if input_str == "B":
                     print("You don't have enough coins to buy a card.")
-
+                    
+                elif input_str == "P":
+                    print("You can not put this card here.")
+                
+                elif input_str == "C":
+                    print("You should have at least two cards.")
+                    
+                elif input_str == "S":
+                    print("You should have at least one card.")
+                
                 elif input_str == "U":
                     print("You don't have enough coins to upgrade.")
 
@@ -357,51 +366,45 @@ def Hearthstone():
     
         def parser_buy(input_str):
             card_num = int(input_str) - 1
-            if 0 <= card_num <= len(show) and show[card_num] != None:
-                return card_num
-
-            else:
-                if card_num <= len(show) and show[card_num] == None:
-                    print("This card is sold out.")
-                else:
-                    print("There is no card on site %s." %(intput_str))
-
+            if 0 <= card_num < len(show) and show[card_num] == None:
+                print("This card is sold out.")
                 raise ValueError
-                
+            if card_num < 0 or card_num >= len(show):
+                print("There is no card on site %s." %(intput_str))
+                raise ValueError
+            return card_num
+            
         def parser_put(input_str):
             card_num = int(input_str) - 1
-            if 0 <= card_num <= len(player.cards):
-                return card_num
-            
-            else:
-                print("There is no card on site %s." %(intput_str))
+            if card_num < 0 or card_num >= len(player.cards):
                 raise ValueError
-                
+            return card_num
+            
         def parser_start(input_str):
             card_start = int(input_str) - 1
-            if 0 <= card_start <= len(table.cards):
-                return card_start
-            
-            else:
-                print("There is no card on site %s." %(intput_str))
+            if card_num < 0 or card_num >= len(table.cards):
                 raise ValueError
+            return card_start
                 
         def parser_end(input_str):
             card_end = int(input_str) - 1
-            if 0 <= card_end <= len(table.cards) and card_end != card_start:
-                return card_end
-            
-            else:
-                if 0 <= card_end <= len(table.cards) and card_end == card_start:
-                    print("This is the orginal card.")
-                
-                else:
-                    print("There is no card on site %s." %(intput_str))
-                
+            if 0 <= card_end < len(table.cards) and card_end == card_start:
+                print("This is the orginal card.")
                 raise ValueError
+            if card_num < 0 or card_num >= len(table.cards):
+                print("There is no card on site %s." %(intput_str))
+                raise ValueError
+            return card_end
+                
+        def parser_sell(input_str):
+            card_num = int(input_str) - 1
+            if card_num < 0 or card_num >= len(table.cards):
+                raise ValueError
+            return card_num
             
         while True:
-            do_sth = require(parser_do_sth, "Buy cards(B) / Put cards(P) / Switch cards(S) / Upgrade(U) / Refresh cards(R) / Complete(C): ")
+            do_sth = require(parser_do_sth,
+                     "Buy cards(B) / Put cards(P) / Change cards(C) / Sell a card(S) / Upgrade(U) / Refresh cards(R) / Over(O): ")
 
             if do_sth == "B":
                 card_num = require(parser_buy, "Which card do you want to buy?")
@@ -410,32 +413,43 @@ def Hearthstone():
                 interface_total(B = show, T = table.cards, P = player.cards)
                 print("Upgrade the rank of Boss needs %d coins." %(boss.upgrade_coin))
                 print("%d coins are still on your hand." %(player.coin))
+                print("%d bloods is left." %(player.blood))
                 print("-----------------------")
             
             elif do_sth == "P":
-                card_num = require(parser_put, "Which card do you want to put onto the table?")
-                table.cards.append(player.cards[card_num])
+                card_num = require(parser_put, "Which card do you want to put onto the table?",
+                                               "There is no card on site %d." %(card_num+1))
+                table.cards.append(player.cards[card_num].copy())
                 del player.cards[card_num]
                 interface_total(B = show, T = table.cards, P = player.cards)
                 print("Upgrade the rank of Boss needs %d coins." %(boss.upgrade_coin))
                 print("%d coins are still on your hand." %(player.coin))
+                print("%d bloods is left." %(player.blood))
                 print("-----------------------")
                 
-            elif do_sth == "S":
-                card_start = require(parser_start, "Which card do you want to move on the table?")
+            elif do_sth == "C":
+                card_start = require(parser_start, "Which card do you want to move on the table?",
+                                                   "There is no card on site %d." %(card_start+1))
                 card_end = require(parser_end, "Which site do you want to move to the table?")
                 table.change(card_start, card_end)
                 interface_total(B = show, T = table.cards, P = player.cards)
                 print("Upgrade the rank of Boss needs %d coins." %(boss.upgrade_coin))
                 print("%d coins are still on your hand." %(player.coin))
+                print("%d bloods is left." %(player.blood))
                 print("-----------------------")
                 
+            elif do_sth == "S":
+                card_num = require(parser_sell, "Which card is going to be sold on the table?",
+                                                "There is no card on site %d." %(card_start+1))
+                
+            
             elif do_sth == "U":
                 player.coin -= boss.upgrade_coin
                 boss.rank_upgrade()
                 interface_total(B = show, T = table.cards, P = player.cards)
                 print("Upgrade the rank of Boss needs %d coins." %(boss.upgrade_coin))
                 print("%d coins are still on your hand." %(player.coin))
+                print("%d bloods is left." %(player.blood))
                 print("-----------------------")
 
             elif do_sth == "R":
@@ -444,12 +458,13 @@ def Hearthstone():
                 interface_total(B = show, T = table.cards, P = player.cards)
                 print("Upgrade the rank of Boss needs %d coins." %(boss.upgrade_coin))
                 print("%d coins are still on your hand." %(player.coin))
+                print("%d bloods is left." %(player.blood))
                 print("-----------------------")
 
             else:
                 break
 
-    while player_one.blood != 0 and player_two.blood != 0:
+    while player_one.blood > 0 and player_two.blood > 0:
         coin_max = min(coin_max+1, 10)
         round_player(player_one, boss_one, table_one)
         round_player(player_two, boss_two, table_two)
@@ -466,11 +481,20 @@ def Hearthstone():
         else:
             who_win, card_damage = table_two.one_round(table_one)
         
-        if who_win == "self":
+        if who_win == player_one.name:
             player_two.blood -= card_damage + boss_one.rank
         
-        elif who_win == "op":
+        elif who_win == player_two.name:
             player_one.blood -= card_damage + boss_two.rank
            
+        else:
+            pass
+        
+        if player_one.blood > 0 and player_two.blood <= 0:
+            print("%s wins this game." %(player_one.name))
+            
+        elif player_one.blood <= 0 and player_two.blood > 0:
+            print("%s wins this game." %(player_two.name))
+        
         else:
             pass
