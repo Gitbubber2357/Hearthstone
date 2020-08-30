@@ -24,10 +24,10 @@ class Card:
         else:
             self.is_live = False
 
-
 class BuffedCard(Card):
-    def __init__(self, name, rank, attack, health, poisonous = False, shield = False, windfury = False, taunt = False):
+    def __init__(self, name, rank, attack, health, species = None, poisonous = False, shield = False, windfury = False, taunt = False):
         super().__init__(name, rank, attack, health)
+        self.species = species
         self.is_poisonous = poisonous
         self.is_shield = shield
         self.is_windfury = windfury
@@ -43,19 +43,59 @@ class Table:
         self.name = name
         self.cards = []
 
-    def card_only(self):
-        return [tuple[1] for tuple in self.cards]
-
-    def change(self, site_A, site_B):
-        self.cards[site_A], self.cards[site_B] =  self.cards[site_B], self.cards[site_A]
-
     def copy_table(self):
         table_copy = Table(self.name)
         for tuple in self.cards:
             table_copy.cards.append((False, tuple[1].copy()))
         return table_copy
 
-    def one_round_(self, op_table):
+    def attack(self, card_A, card_B):
+        if card_A.is_shield == True:
+            card_A.is_shield = False
+        elif card_B.is_poisonous == True:
+            card_A.accept_damage(card_A.health)
+        else:
+            card_A.accept_damage(card_B.attack)
+
+        if card_B.is_shield == True:
+            card_B.is_shield = False
+        elif card_A.is_poisonous == True:
+            card_B.accept_damage(card_B.health)
+        else:
+            card_B.accept_damage(card_A.attack)
+
+    def total_attack(self, my, op, atker_index):
+        if any(tuple[1].is_taunt for tuple in op.cards):
+            target = random.choice([tuple[1] for tuple in op.cards if tuple[1].is_taunt])
+        else:
+            target = random.choice([tuple[1] for tuple in op.cards])
+
+        self.attack(my.cards[atker_index][1], target)
+
+        print("%s in %s attack %s in %s" %(my.cards[atker_index][1].name, my.name, target.name, op.name))
+
+        target_idex = [tuple[1] for tuple in op.cards].index(target)
+        if not target.is_live:
+            del op.cards[target_idex]
+            if op.cards != [] and True not in [tuple[0] for tuple in op.cards]:
+                op.cards[target_idex] = (True, op.cards[target_idex][1])
+
+    def half_round(self, my, op):
+        atker_index = [tuple[0] for tuple in my.cards].index(True)
+        self.total_attack(my, op, atker_index)
+
+        if my.cards[atker_index][1].is_live and my.cards[atker_index][1].is_windfury and my.cards != [] and op.cards != []:
+            self.total_attack(my, op, atker_index)
+
+        if not my.cards[atker_index][1].is_live:
+            del my.cards[atker_index]
+            if my.cards != []:
+                my.cards[atker_index] = (True, my.cards[atker_index][1])
+        else:
+            atker_index = (atker_index + 1) % len(my.cards)
+            my.cards[atker_index] = (True, my.cards[atker_index][1])
+
+    def one_round(self, op_table):
         table_copy_my = self.copy_table()
         table_copy_op = op_table.copy_table()
 
@@ -64,71 +104,11 @@ class Table:
         if table_copy_op.cards != []:
             table_copy_op.cards[0] = (True, table_copy_op.cards[0][1])
 
-        def attack(card_A, card_B):
-            if card_A.is_shield == True:
-                card_A.is_shield = False
-            elif card_B.is_poisonous == True:
-                card_A.accept_damage(card_A.health)
-            else:
-                card_A.accept_damage(card_B.attack)
-
-            if card_B.is_shield == True:
-                card_B.is_shield = False
-            elif card_A.is_poisonous == True:
-                card_B.accept_damage(card_B.health)
-            else:
-                card_B.accept_damage(card_A.attack)
-
-        def total_attack(my, op, atker_index):
-            if any(tuple[1].is_taunt for tuple in op.cards):
-                target = random.choice([tuple[1] for tuple in op.cards if tuple[1].is_taunt])
-            else:
-                target = random.choice([tuple[1] for tuple in op.cards])
-
-            attack(my.cards[atker_index][1], target)
-
-            print("%s in %s attack %s in %s" %(my.cards[atker_index][1].name, my.name, target.name, op.name))
-
-            target_idex = [tuple[1] for tuple in op.cards].index(target)
-            if not target.is_live:
-                del op.cards[target_idex]
-                if op.cards != [] and True not in [tuple[0] for tuple in op.cards]:
-                    op.cards[target_idex] = (True, op.cards[target_idex][1])
-
         while table_copy_my.cards != [] and table_copy_op.cards != []:
-
-            atker_index = [tuple[0] for tuple in table_copy_my.cards].index(True)
-            total_attack(table_copy_my, table_copy_op, atker_index)
-            if table_copy_my.cards[atker_index][1].is_live and table_copy_my.cards[atker_index][1].is_windfury and (
-                table_copy_my.cards != [] and table_copy_op.cards != []):
-                total_attack(table_copy_my, table_copy_op, atker_index)
-
-            if not table_copy_my.cards[atker_index][1].is_live:
-                del table_copy_my.cards[atker_index]
-                if table_copy_my.cards != []:
-                    table_copy_my.cards[atker_index] = (True, table_copy_my.cards[atker_index][1])
-            else:
-                atker_index += 1
-                atker_index %= sum( 1 for tuple in table_copy_my.cards)
-                table_copy_my.cards[atker_index] = (True, table_copy_my.cards[atker_index][1])
-
-            if table_copy_my.cards != [] and table_copy_op.cards != []:
-
-                atker_index = [tuple[0] for tuple in table_copy_op.cards].index(True)
-                total_attack(table_copy_op, table_copy_my, atker_index)
-
-                if table_copy_op.cards[atker_index][1].is_live and table_copy_op.cards[atker_index][1].is_windfury and (
-                    table_copy_my.cards != [] and table_copy_op.cards != []):
-                    total_attack(table_copy_op, table_copy_my, atker_index)
-
-                if not table_copy_op.cards[atker_index][1].is_live:
-                    del table_copy_op.cards[atker_index]
-                    if table_copy_op.cards != []:
-                        table_copy_op.cards[atker_index] = (True, table_copy_op.cards[atker_index][1])
-                else:
-                    atker_index += 1
-                    atker_index %= sum( 1 for tuple in table_copy_op.cards)
-                    table_copy_op.cards[atker_index] = (True, table_copy_op.cards[atker_index][1])
+            self.half_round(table_copy_my, table_copy_op)
+            if table_copy_my.cards == [] or table_copy_op.cards == []:
+                break
+            self.half_round(table_copy_op, table_copy_my)
 
         if table_copy_my.cards != [] and table_copy_op.cards == []:
             print("%s wins this round." %(table_copy_my.name))
@@ -161,7 +141,6 @@ class Boss:
         self.rank = 1
         self.upgrade_coin = 6
         self.card_rank = card_rank
-#         self.cards = cards
 
     def upgrade_coin_counter(self):
         if self.rank == 2:
@@ -316,7 +295,7 @@ def Hearthstone(card_rank):
         boss.upgrade_coin -= 1
 
         show = boss.show()
-        interface_total(B = show, T = table.card_only(), P = player.cards)
+        interface_total(B = show, T = [tuple[1] for tuple in table.cards], P = player.cards)
         print("Upgrade the rank of Boss needs %d coins." %(boss.upgrade_coin))
         print("%d coins are still on your hand." %(player.coin))
         print("%d bloods is left." %(player.blood))
@@ -431,7 +410,7 @@ def Hearthstone(card_rank):
             elif do_sth == "C":
                 card_start = require(parser_start, "Which card do you want to move on the table?")
                 card_end = require(parser_end, "Which site do you want to move to the table?")
-                table.change(card_start, card_end)
+                table.cards[card_start], table.cards[card_end] =  table.cards[card_end], table.cards[card_start]
 
             elif do_sth == "S":
                 card_num = require(parser_sell, "Which card is going to be sold on the table?")
@@ -449,7 +428,7 @@ def Hearthstone(card_rank):
             else:
                 break
 
-            interface_total(B = show, T = table.card_only(), P = player.cards)
+            interface_total(B = show, T = [tuple[1] for tuple in table.cards], P = player.cards)
             print("Upgrade the rank of Boss needs %d coins." %(boss.upgrade_coin))
             print("%d coins are still on your hand." %(player.coin))
             print("%d bloods is left." %(player.blood))
@@ -467,9 +446,9 @@ def Hearthstone(card_rank):
         temp = np.random.randint(1,3)
 
         if temp == 1:
-            who_win, card_damage = table_one.one_round_(table_two)
+            who_win, card_damage = table_one.one_round(table_two)
         else:
-            who_win, card_damage = table_two.one_round_(table_one)
+            who_win, card_damage = table_two.one_round(table_one)
 
         if who_win == player_one.name:
             player_two.blood -= card_damage + boss_one.rank
@@ -479,8 +458,8 @@ def Hearthstone(card_rank):
             pass
 
         if player_one.blood > 0 and player_two.blood <= 0:
-            print("%s wins this game." %(player_one.name))
+            print("and %s wins this game." %(player_one.name))
         elif player_one.blood <= 0 and player_two.blood > 0:
-            print("%s wins this game." %(player_two.name))
+            print("and %s wins this game." %(player_two.name))
         else:
             pass
