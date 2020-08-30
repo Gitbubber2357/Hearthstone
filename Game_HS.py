@@ -59,11 +59,10 @@ class Table:
         table_copy_my = self.copy_table()
         table_copy_op = op_table.copy_table()
 
-        table_copy_my.cards[0] = (True, table_copy_my.cards[0][1])
-        table_copy_op.cards[0] = (True, table_copy_op.cards[0][1])
-
-        # table_copy_my.cards[0][0] = True
-        # table_copy_op.cards[0][0] = True
+        if table_copy_my.cards != []:
+            table_copy_my.cards[0] = (True, table_copy_my.cards[0][1])
+        if table_copy_op.cards != []:
+            table_copy_op.cards[0] = (True, table_copy_op.cards[0][1])
 
         def attack(card_A, card_B):
             if card_A.is_shield == True:
@@ -81,19 +80,19 @@ class Table:
                 card_B.accept_damage(card_A.attack)
 
         def total_attack(my, op, atker_index):
-            if any(tuple[1].is_live and tuple[1].is_taunt for tuple in op.cards):
-                target = random.choice([tuple[1] for tuple in op.cards if tuple[1].is_live and tuple[1].is_taunt])
+            if any(tuple[1].is_taunt for tuple in op.cards):
+                target = random.choice([tuple[1] for tuple in op.cards if tuple[1].is_taunt])
             else:
-                target = random.choice([tuple[1] for tuple in op.cards if tuple[1].is_live])
+                target = random.choice([tuple[1] for tuple in op.cards])
 
             attack(my.cards[atker_index][1], target)
 
             print("%s in %s attack %s in %s" %(my.cards[atker_index][1].name, my.name, target.name, op.name))
 
             target_idex = [tuple[1] for tuple in op.cards].index(target)
-            if not target.is_live and op.cards[target_idex][0]:
+            if not target.is_live:
                 del op.cards[target_idex]
-                if any(tuple in op.cards):
+                if op.cards != [] and True not in [tuple[0] for tuple in op.cards]:
                     op.cards[target_idex] = (True, op.cards[target_idex][1])
 
         while table_copy_my.cards != [] and table_copy_op.cards != []:
@@ -101,7 +100,7 @@ class Table:
             atker_index = [tuple[0] for tuple in table_copy_my.cards].index(True)
             total_attack(table_copy_my, table_copy_op, atker_index)
             if table_copy_my.cards[atker_index][1].is_live and table_copy_my.cards[atker_index][1].is_windfury and (
-                any(tuple[1].is_live for tuple in table_copy_my.cards) and any(tuple[1].is_live for tuple in table_copy_op.cards)):
+                table_copy_my.cards != [] and table_copy_op.cards != []):
                 total_attack(table_copy_my, table_copy_op, atker_index)
 
             if not table_copy_my.cards[atker_index][1].is_live:
@@ -119,17 +118,17 @@ class Table:
                 total_attack(table_copy_op, table_copy_my, atker_index)
 
                 if table_copy_op.cards[atker_index][1].is_live and table_copy_op.cards[atker_index][1].is_windfury and (
-                    any(tuple[1].is_live for tuple in table_copy_my.cards) and any(tuple[1].is_live for tuple in table_copy_op.cards)):
+                    table_copy_my.cards != [] and table_copy_op.cards != []):
                     total_attack(table_copy_op, table_copy_my, atker_index)
 
                 if not table_copy_op.cards[atker_index][1].is_live:
                     del table_copy_op.cards[atker_index]
                     if table_copy_op.cards != []:
-                        table_copy_op.cards[atker_index] = (True, table_copy_op.cards[atker_index])
+                        table_copy_op.cards[atker_index] = (True, table_copy_op.cards[atker_index][1])
                 else:
                     atker_index += 1
                     atker_index %= sum( 1 for tuple in table_copy_op.cards)
-                    table_copy_op.cards[atker_index] = (True, table_copy_op.cards[atker_index])
+                    table_copy_op.cards[atker_index] = (True, table_copy_op.cards[atker_index][1])
 
         if table_copy_my.cards != [] and table_copy_op.cards == []:
             print("%s wins this round." %(table_copy_my.name))
@@ -142,84 +141,6 @@ class Table:
         else:
             print("It's a tie.")
             return "None", 0
-
-''''''''''''''''''''''''''''''''''
-
-    def one_round(self, op_table):
-        table_copy_my = self.copy_table()
-        table_copy_op = op_table.copy_table()
-
-        index_my = index_op = -1
-
-        def attack(card_A, card_B):
-            if card_A.is_shield == True:
-                card_A.is_shield = False
-            elif card_B.is_poisonous == True:
-                card_A.accept_damage(card_A.health)
-            else:
-                card_A.accept_damage(card_B.attack)
-
-            if card_B.is_shield == True:
-                card_B.is_shield = False
-            elif card_A.is_poisonous == True:
-                card_B.accept_damage(card_B.health)
-            else:
-                card_B.accept_damage(card_A.attack)
-
-        def total_attack(my, op, index_my):
-            if any(card.is_live and card.is_taunt for card in op.cards):
-                target = random.choice([card for card in op.cards if card.is_live and card.is_taunt])
-            else:
-                target = random.choice([card for card in op.cards if card.is_live])
-
-            attack(my.cards[index_my], target)
-
-            print("%s in %s attack %s in %s" %(my.cards[index_my].name, my.name, target.name, op.name))
-
-        while any(card.is_live for card in table_copy_my.cards) and any(card.is_live for card in table_copy_op.cards):
-            index_my += 1
-            index_my %= sum(1 for card in table_copy_my.cards if card.is_live)
-
-            print(index_my)
-            while not table_copy_my.cards[index_my].is_live:
-                print(index_my)
-                index_my += 1
-                index_my %= sum(1 for card in table_copy_my.cards if card.is_live)
-
-            total_attack(table_copy_my, table_copy_op, index_my)
-
-            if table_copy_my.cards[index_my].is_windfury and (any(card.is_live for card in table_copy_my.cards)
-                                                            and any(card.is_live for card in table_copy_op.cards)):
-                total_attack(table_copy_my, table_copy_op, index_my)
-
-            if any(card.is_live for card in table_copy_my.cards) and any(card.is_live for card in table_copy_op.cards):
-                index_op += 1
-                index_op %= sum(1 for card in table_copy_op.cards if card.is_live)
-
-                print(index_op)
-                while not table_copy_op.cards[index_op].is_live:
-                    print(index_op)
-                    index_op += 1
-                    index_op %= sum(1 for card in table_copy_op.cards if card.is_live)
-
-                total_attack(table_copy_op, table_copy_my, index_op)
-
-                if table_copy_op.cards[index_op].is_windfury and (any(card.is_live for card in table_copy_my.cards)
-                                                                    and any(card.is_live for card in table_copy_op.cards)):
-                    total_attack(table_copy_op, table_copy_my, index_op)
-
-        if any(card.is_live for card in table_copy_my.cards) and not any(card.is_live for card in table_copy_op.cards):
-            print("%s wins this round." %(table_copy_my.name))
-            return table_copy_my.name, sum(card.rank for card in table_copy_my.cards if card.is_live)
-
-        elif not any(card.is_live for card in table_copy_my.cards) and any(card.is_live for card in table_copy_op.cards):
-            print("%s wins this round." %(table_copy_op.name))
-            return table_copy_op.name, sum(card.rank for card in table_copy_op.cards if card.is_live)
-
-        else:
-            print("It's a tie.")
-            return "None", 0
-'''''''''''''''''''''''
 
 
 def prob_mach(*prob_number):
