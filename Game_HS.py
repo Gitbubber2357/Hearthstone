@@ -25,17 +25,30 @@ class Card:
             self.is_live = False
 
 class BuffedCard(Card):
-    def __init__(self, name, rank, attack, health, species = None, poisonous = False, shield = False, windfury = False, taunt = False):
+    def __init__(self, name, rank, attack, health, species = None, poisonous = False, shield = False, windfury = False, taunt = False, battle_cry = None):
         super().__init__(name, rank, attack, health)
         self.species = species
         self.is_poisonous = poisonous
         self.is_shield = shield
         self.is_windfury = windfury
         self.is_taunt = taunt
+        self.battle_cry = battle_cry
 
     def copy(self):
         return BuffedCard(self.name, self.rank, self.attack, self.health,
                           self.is_poisonous, self.is_shield, self.is_windfury, self.is_taunt)
+
+
+class BuffCry:
+    def __init__(self, attack = 0, health = 0, upgrade_coin = 0, species = (None, 0), poisonous = False, shield = False, windfury = False, taunt = False):
+        self.attack = attack
+        self.health = health
+        self.upgrade_coin = upgrade_coin
+        self.species = species
+        self.poisoning = poisonous
+        self.shielding = shield
+        self.windfuring = windfury
+        self.taunting = taunt
 
 
 class Table:
@@ -196,11 +209,11 @@ class Boss:
 
 
 class Player:
-    def __init__(self, name, coin, blood):
+    def __init__(self, name, coin, health):
         self.name = name
         self.coin = coin
         self.cards = []
-        self.blood = blood
+        self.health = health
 
 
 def interface(who, cards):
@@ -277,8 +290,8 @@ def Hearthstone(card_rank):
     name_one = input("What is your name(player_one):")
     name_two = input("What is your name(player_two):")
 
-    player_one = Player(name = name_one, coin = 0, blood = 10)
-    player_two = Player(name = name_two, coin = 0, blood = 10)
+    player_one = Player(name = name_one, coin = 0, health = 40)
+    player_two = Player(name = name_two, coin = 0, health = 40)
 
     boss_one = Boss(card_rank)
     boss_two = Boss(card_rank)
@@ -298,7 +311,7 @@ def Hearthstone(card_rank):
         interface_total(B = show, T = [tuple[1] for tuple in table.cards], P = player.cards)
         print("Upgrade the rank of Boss needs %d coins." %(boss.upgrade_coin))
         print("%d coins are still on your hand." %(player.coin))
-        print("%d bloods is left." %(player.blood))
+        print("%d blood is left." %(player.health))
         print("-----------------------")
 
         def parser_do_sth(input_str):
@@ -431,10 +444,10 @@ def Hearthstone(card_rank):
             interface_total(B = show, T = [tuple[1] for tuple in table.cards], P = player.cards)
             print("Upgrade the rank of Boss needs %d coins." %(boss.upgrade_coin))
             print("%d coins are still on your hand." %(player.coin))
-            print("%d bloods is left." %(player.blood))
+            print("%d blood is left." %(player.health))
             print("-----------------------")
 
-    while player_one.blood > 0 and player_two.blood > 0:
+    while player_one.health > 0 and player_two.health > 0:
         coin_max = min(coin_max+1, 10)
         round_player(player_one, boss_one, table_one)
         round_player(player_two, boss_two, table_two)
@@ -451,15 +464,15 @@ def Hearthstone(card_rank):
             who_win, card_damage = table_two.one_round(table_one)
 
         if who_win == player_one.name:
-            player_two.blood -= card_damage + boss_one.rank
+            player_two.health -= card_damage + boss_one.rank
         elif who_win == player_two.name:
-            player_one.blood -= card_damage + boss_two.rank
+            player_one.health -= card_damage + boss_two.rank
         else:
             pass
 
-        if player_one.blood > 0 and player_two.blood <= 0:
+        if player_one.health > 0 and player_two.health <= 0:
             print("and %s wins this game." %(player_one.name))
-        elif player_one.blood <= 0 and player_two.blood > 0:
+        elif player_one.health <= 0 and player_two.health > 0:
             print("and %s wins this game." %(player_two.name))
         else:
             pass
